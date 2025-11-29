@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Футбольная игра со стилями</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(45deg, #2e8b57, #228b22);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            width: 1200px;
+            height: 800px;
+            background: #228b22;
+            border: 5px solid #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .field {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #228b22 0%, #32cd32 50%, #228b22 100%);
+            position: relative;
+        }
+
+        .center-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: white;
+            transform: translateX(-50%);
+        }
+
+        .center-circle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 100px;
+            height: 100px;
+            border: 2px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .goal {
+            position: absolute;
+            width: 20px;
+            height: 120px;
+            background: white;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .goal.left {
+            left: 0;
+        }
+
+        .goal.right {
+            right: 0;
+        }
+
+        .player {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4169e1;
+            border: 2px solid #000080;
+            border-radius: 50%;
+            z-index: 10;
+            transition: all 0.1s ease;
+        }
+
+        .enemy {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #dc143c;
+            border: 2px solid #8b0000;
+            border-radius: 50%;
+            z-index: 10;
+            transition: all 0.1s ease;
+        }
+
+        .ball {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #ffa500;
+            border: 2px solid #ff8c00;
+            border-radius: 50%;
+            z-index: 5;
+            transition: all 0.1s ease;
+        }
+
+        .ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 20;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .style-selector {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 20;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .style-button {
+            background: #4169e1;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .style-button.active {
+            background: #ffd700;
+            color: black;
+        }
+
+        .style-button:hover {
+            opacity: 0.8;
+        }
+
+        .ability-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 20;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            color: white;
+            font-size: 12px;
+            text-align: right;
+            z-index: 20;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .crosshair {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.8);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+            display: none;
+        }
+        
+        .crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .has-ball {
+            box-shadow: 0 0 15px rgba(255,255,0,0.8);
+            border-color: #ffd700;
+        }
+
+        .stunned {
+            background: #9370db !important;
+            border-color: #663399 !important;
+            animation: stunnedShake 0.2s infinite;
+        }
+
+        @keyframes stunnedShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        .dribbling {
+            border-color: #00ff00 !important;
+            box-shadow: 0 0 15px rgba(0,255,0,0.8) !important;
+            animation: dribbleGlow 0.3s infinite alternate !important;
+        }
+
+        @keyframes dribbleGlow {
+            0% { box-shadow: 0 0 15px rgba(0,255,0,0.8); }
+            100% { box-shadow: 0 0 25px rgba(0,255,0,1); }
+        }
+
+        .power-shot {
+            animation: powerCharge 0.5s ease-in-out;
+        }
+
+        @keyframes powerCharge {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); background: #ff0000; }
+            100% { transform: scale(1); }
+        }
+
+        .curved-shot {
+            animation: curveCharge 0.5s ease-in-out;
+        }
+
+        @keyframes curveCharge {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); background: #00ffff; }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        .speed-boost {
+            border-color: #ffff00 !important;
+            box-shadow: 0 0 20px rgba(255,255,0,1) !important;
+        }
+
+        .ball-trail {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(255,165,0,0.6);
+            border-radius: 50%;
+            animation: trailFade 0.3s ease-out forwards;
+            z-index: 3;
+        }
+
+        @keyframes trailFade {
+            0% { opacity: 0.6; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.2); }
+        }
+
+        .goal-effect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255,255,0,0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: goalAnimation 1s ease-out;
+            z-index: 25;
+        }
+
+        @keyframes goalAnimation {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="field">
+            <div class="center-line"></div>
+            <div class="center-circle"></div>
+            <div class="goal left"></div>
+            <div class="goal right"></div>
+            
+            <div class="player" id="player"></div>
+            <div class="ball" id="ball"></div>
+            <div class="crosshair" id="crosshair"></div>
+        </div>
+        
+        <div class="ui">
+            <div>Голы: <span id="score">0</span></div>
+            <div>Время: <span id="time">90</span>с</div>
+        </div>
+        
+        <div class="style-selector">
+            <div>Стиль игры:</div>
+            <button class="style-button active" onclick="setStyle('normal')">Обычный</button>
+            <button class="style-button" onclick="setStyle('power')">Силовой</button>
+            <button class="style-button" onclick="setStyle('technical')">Технический</button>
+            <button class="style-button" onclick="setStyle('speed')">Скоростной</button>
+        </div>
+        
+        <div class="ability-indicator" id="abilityStatus">
+            <div>Способность: Готова</div>
+            <div id="styleInfo">Обычный стиль</div>
+        </div>
+        
+        <div class="controls">
+            Управление: WASD<br>
+            Отбор: E<br>
+            Дриблинг: Q (1сек)<br>
+            Удар: ЛКМ (по прицелу)<br>
+            Способность: R
+        </div>
+    </div>
+
+    <script>
+        // Игровые переменные
+        let playerX = 100;
+        let playerY = 385;
+        let ballX = 590;
+        let ballY = 390;
+        let ballVelX = 0;
+        let ballVelY = 0;
+        let score = 0;
+        let timeLeft = 90;
+        let gameRunning = true;
+        let enemies = [];
+        
+        // Система владения мячом
+        let ballOwner = null;
+        let ballPossessionDistance = 30;
+        let stealDistance = 25;
+        let isDribbling = false;
+        let dribbleEndTime = 0;
+        
+        // Стили игры
+        let currentStyle = 'normal';
+        let abilityReady = true;
+        let abilityEndTime = 0;
+        
+        // Скорости (медленнее)
+        const speeds = {
+            player: 1.5,
+            enemy: 1.0,
+            dribble: 2.2,
+            ball: 8
+        };
+        
+        // Стили игры
+        const styles = {
+            normal: {
+                name: 'Обычный стиль',
+                ability: 'Точный пас',
+                cooldown: 3000
+            },
+            power: {
+                name: 'Силовой удар',
+                ability: 'Мощный удар',
+                cooldown: 5000
+            },
+            technical: {
+                name: 'Кручёный удар',
+                ability: 'Кручёный удар',
+                cooldown: 4000
+            },
+            speed: {
+                name: 'Ускорение',
+                ability: 'Спринт',
+                cooldown: 6000
+            }
+        };
+        
+        // Клавиши
+        let keys = {};
+        
+        // Элементы DOM
+        let player = document.getElementById('player');
+        let ball = document.getElementById('ball');
+        let crosshair = document.getElementById('crosshair');
+        let scoreElement = document.getElementById('score');
+        let timeElement = document.getElementById('time');
+        let abilityStatus = document.getElementById('abilityStatus');
+        let styleInfo = document.getElementById('styleInfo');
+        
+        // Инициализация
+        function init() {
+            updatePlayerPosition();
+            updateBallPosition();
+            createEnemies();
+            updateStyleInfo();
+            gameLoop();
+            startTimer();
+        }
+        
+        // Создание противников
+        function createEnemies() {
+            let enemy = document.createElement('div');
+            enemy.className = 'enemy';
+            enemy.style.left = '900px';
+            enemy.style.top = '400px';
+            document.querySelector('.field').appendChild(enemy);
+            enemies.push({
+                element: enemy,
+                x: 900,
+                y: 400,
+                isStunned: false,
+                stunnedEndTime: 0
+            });
+        }
+        
+        // Обновление позиций
+        function updatePlayerPosition() {
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+        }
+        
+        function updateBallPosition() {
+            ball.style.left = ballX + 'px';
+            ball.style.top = ballY + 'px';
+        }
+        
+        // Переменные для мыши
+        let mouseX = 0;
+        let mouseY = 0;
+        let ballControlActive = false;
+        let ballControlEndTime = 0;
+        
+        // Обработка клавиш
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'KeyE') {
+                e.preventDefault();
+                attemptSteal();
+            }
+            
+            if (e.code === 'KeyQ') {
+                e.preventDefault();
+                if (ballOwner === 'player' && !isDribbling) {
+                    startDribbling();
+                }
+            }
+            
+            if (e.code === 'KeyR') {
+                e.preventDefault();
+                useAbility();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        // Обработка мыши
+        document.addEventListener('mousemove', (e) => {
+            let rect = document.querySelector('.field').getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            
+            // Обновляем позицию прицела
+            if (ballOwner === 'player') {
+                crosshair.style.left = (mouseX - 10) + 'px';
+                crosshair.style.top = (mouseY - 10) + 'px';
+                crosshair.style.display = 'block';
+            } else {
+                crosshair.style.display = 'none';
+            }
+        });
+        
+        document.addEventListener('click', (e) => {
+            if (ballOwner === 'player') {
+                shootBallToMouse();
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            const rect = document.querySelector('.field').getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        
+        // Движение игрока
+        function movePlayer() {
+            if (!gameRunning) return;
+            
+            let speed = speeds.player;
+            if (isDribbling) speed = speeds.dribble;
+            if (currentStyle === 'speed' && Date.now() < abilityEndTime) speed *= 2;
+            
+            let oldX = playerX;
+            let oldY = playerY;
+            
+            if (keys['KeyW'] || keys['ArrowUp']) {
+                playerY = Math.max(0, playerY - speed);
+            }
+            if (keys['KeyS'] || keys['ArrowDown']) {
+                playerY = Math.min(770, playerY + speed);
+            }
+            if (keys['KeyA'] || keys['ArrowLeft']) {
+                playerX = Math.max(0, playerX - speed);
+            }
+            if (keys['KeyD'] || keys['ArrowRight']) {
+                playerX = Math.min(1170, playerX + speed);
+            }
+            
+            updatePlayerPosition();
+            
+            // Если игрок владеет мячом, мяч следует за ним (только если не летит)
+            if (ballOwner === 'player' && Math.abs(ballVelX) < 0.1 && Math.abs(ballVelY) < 0.1) {
+                ballX = playerX + 15;
+                ballY = playerY + 15;
+                updateBallPosition();
+                // Показываем прицел
+                crosshair.style.display = 'block';
+            } else if (ballOwner === 'player') {
+                crosshair.style.display = 'block';
+            } else {
+                crosshair.style.display = 'none';
+            }
+        }
+        
+        // Движение противников
+        function moveEnemies() {
+            enemies.forEach(enemy => {
+                if (enemy.isStunned && Date.now() < enemy.stunnedEndTime) {
+                    enemy.element.classList.add('stunned');
+                    return;
+                } else {
+                    enemy.element.classList.remove('stunned');
+                    enemy.isStunned = false;
+                }
+                
+                let targetX, targetY;
+                
+                if (ballOwner === 'player') {
+                    // Преследуем игрока
+                    targetX = playerX;
+                    targetY = playerY;
+                } else {
+                    // Идем к мячу
+                    targetX = ballX;
+                    targetY = ballY;
+                }
+                
+                let dx = targetX - enemy.x;
+                let dy = targetY - enemy.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 5) {
+                    enemy.x += (dx / distance) * speeds.enemy;
+                    enemy.y += (dy / distance) * speeds.enemy;
+                    
+                    enemy.x = Math.max(0, Math.min(1170, enemy.x));
+                    enemy.y = Math.max(0, Math.min(770, enemy.y));
+                    
+                    enemy.element.style.left = enemy.x + 'px';
+                    enemy.element.style.top = enemy.y + 'px';
+                }
+                
+                // Противник пытается отобрать мяч
+                if (ballOwner === 'player') {
+                    let distToPlayer = Math.sqrt((enemy.x - playerX) ** 2 + (enemy.y - playerY) ** 2);
+                    if (distToPlayer < 25 && Math.random() < 0.02) { // 2% шанс каждый кадр
+                        stealBallFromPlayer(enemy);
+                    }
+                }
+                
+                // Противник подбирает свободный мяч
+                if (!ballOwner) {
+                    let distToBall = Math.sqrt((enemy.x - ballX) ** 2 + (enemy.y - ballY) ** 2);
+                    if (distToBall < ballPossessionDistance) {
+                        ballOwner = enemy;
+                        enemy.element.classList.add('has-ball');
+                        ball.classList.add('possessed');
+                    }
+                }
+            });
+        }
+        
+        // Дриблинг
+        function startDribbling() {
+            if (!ballOwner === 'player') return;
+            
+            isDribbling = true;
+            dribbleEndTime = Date.now() + 1000; // 1 секунда
+            player.classList.add('dribbling');
+            
+            // Оглушаем всех противников рядом
+            enemies.forEach(enemy => {
+                let distance = Math.sqrt((enemy.x - playerX) ** 2 + (enemy.y - playerY) ** 2);
+                if (distance < 50) {
+                    enemy.isStunned = true;
+                    enemy.stunnedEndTime = Date.now() + 1000;
+                }
+            });
+        }
+        
+        // Отбор мяча
+        function attemptSteal() {
+            enemies.forEach(enemy => {
+                if (ballOwner === enemy) {
+                    let distance = Math.sqrt((enemy.x - playerX) ** 2 + (enemy.y - playerY) ** 2);
+                    if (distance < stealDistance) {
+                        // 90% шанс успешного отбора
+                        if (Math.random() < 0.9) {
+                            ballOwner = 'player';
+                            enemy.element.classList.remove('has-ball');
+                            player.classList.add('has-ball');
+                            ball.classList.add('possessed');
+                            
+                            ballX = playerX + 10;
+                            ballY = playerY + 10;
+                            updateBallPosition();
+                            
+                            // Блокируем противника на 3 секунды
+                            enemy.isStunned = true;
+                            enemy.stunnedEndTime = Date.now() + 3000;
+                            enemy.element.classList.add('stunned');
+                            
+                            setTimeout(() => {
+                                enemy.isStunned = false;
+                                enemy.element.classList.remove('stunned');
+                            }, 3000);
+                            
+                            // Эффект отбора
+                            createStealEffect(playerX, playerY);
+                        }
+                    }
+                }
+            });
+        }
+        
+        function stealBallFromPlayer(enemy) {
+            ballOwner = enemy;
+            player.classList.remove('has-ball');
+            enemy.element.classList.add('has-ball');
+            ball.classList.add('possessed');
+            
+            ballX = enemy.x + 10;
+            ballY = enemy.y + 10;
+            updateBallPosition();
+            
+            createStealEffect(enemy.x, enemy.y);
+        }
+        
+        // Удар по мячу к мыши
+        function shootBallToMouse() {
+            if (ballOwner !== 'player') return;
+            
+            let power = 1;
+            let curve = 0;
+            
+            // Применяем эффекты стиля
+            if (currentStyle === 'power' && abilityReady) {
+                power = 2.5;
+                player.classList.add('power-shot');
+                setTimeout(() => player.classList.remove('power-shot'), 500);
+                useAbilityCooldown();
+            } else if (currentStyle === 'technical' && abilityReady) {
+                // Активируем управление мячом мышью
+                ballControlActive = true;
+                ballControlEndTime = Date.now() + 3000; // 3 секунды управления
+                player.classList.add('curved-shot');
+                setTimeout(() => player.classList.remove('curved-shot'), 500);
+                useAbilityCooldown();
+            }
+            
+            // Освобождаем мяч ПЕРВЫМ ДЕЛОМ!
+            ballOwner = null;
+            player.classList.remove('has-ball');
+            ball.classList.remove('possessed');
+            
+            // Направление к мыши
+            let dx = mouseX - ballX;
+            let dy = mouseY - ballY;
+            let distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 5) { // Минимальное расстояние
+                ballVelX = (dx / distance) * speeds.ball * power;
+                ballVelY = (dy / distance) * speeds.ball * power + curve;
+                
+                // Создаем эффект следа
+                createBallTrail();
+            }
+        }
+        
+        // Старая функция для совместимости
+        function shootBall() {
+            shootBallToMouse();
+        }
+        
+        // Способности стилей
+        function useAbility() {
+            if (!abilityReady) return;
+            
+            switch (currentStyle) {
+                case 'normal':
+                    // Точный пас - мяч летит точно в ворота
+                    if (ballOwner === 'player') {
+                        // Автоматический удар в ворота
+                        mouseX = 1190;
+                        mouseY = 400;
+                        shootBallToMouse();
+                    }
+                    break;
+                case 'power':
+                    // Уже обрабатывается в shootBall
+                    break;
+                case 'technical':
+                    // Уже обрабатывается в shootBall
+                    break;
+                case 'speed':
+                    // Ускорение на 3 секунды
+                    abilityEndTime = Date.now() + 3000;
+                    player.classList.add('speed-boost');
+                    setTimeout(() => player.classList.remove('speed-boost'), 3000);
+                    break;
+            }
+            
+            useAbilityCooldown();
+        }
+        
+        function useAbilityCooldown() {
+            abilityReady = false;
+            setTimeout(() => {
+                abilityReady = true;
+                updateAbilityStatus();
+            }, styles[currentStyle].cooldown);
+            updateAbilityStatus();
+        }
+        
+        // Смена стиля
+        function setStyle(style) {
+            currentStyle = style;
+            document.querySelectorAll('.style-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            updateStyleInfo();
+        }
+        
+        function updateStyleInfo() {
+            styleInfo.textContent = styles[currentStyle].name;
+            updateAbilityStatus();
+        }
+        
+        function updateAbilityStatus() {
+            let statusText = abilityReady ? 'Готова' : 'Перезарядка...';
+            abilityStatus.innerHTML = `
+                <div>Способность: ${statusText}</div>
+                <div>${styles[currentStyle].name}</div>
+            `;
+        }
+        
+        // Физика мяча
+        function updateBall() {
+            if (ballOwner) return;
+            
+            // Управление мячом мышью при крученом ударе
+            if (ballControlActive && Date.now() < ballControlEndTime) {
+                // Направляем мяч к мыши
+                let dx = mouseX - ballX;
+                let dy = mouseY - ballY;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 5) {
+                    let controlForce = 0.3; // Сила притяжения к мыши
+                    ballVelX += (dx / distance) * controlForce;
+                    ballVelY += (dy / distance) * controlForce;
+                }
+            } else if (ballControlActive) {
+                // Заканчиваем управление
+                ballControlActive = false;
+            }
+            
+            ballX += ballVelX;
+            ballY += ballVelY;
+            
+            // Трение
+            ballVelX *= 0.98;
+            ballVelY *= 0.98;
+            
+            // Границы поля
+            if (ballY <= 0 || ballY >= 785) {
+                ballVelY = -ballVelY;
+            }
+            
+            // Проверка гола
+            if (ballX >= 1180 && ballY >= 340 && ballY <= 460) {
+                score++;
+                scoreElement.textContent = score;
+                createGoalEffect(ballX, ballY);
+                resetBall();
+            }
+            
+            if (ballX <= 0) {
+                ballVelX = -ballVelX;
+            }
+            
+            // Остановка мяча
+            if (Math.abs(ballVelX) < 0.1 && Math.abs(ballVelY) < 0.1) {
+                ballVelX = 0;
+                ballVelY = 0;
+            }
+            
+            updateBallPosition();
+            
+            // Подбор мяча игроком (только если мяч не летит)
+            let distToPlayer = Math.sqrt((ballX - playerX) ** 2 + (ballY - playerY) ** 2);
+            if (distToPlayer < ballPossessionDistance && !ballOwner && Math.abs(ballVelX) < 1 && Math.abs(ballVelY) < 1) {
+                ballOwner = 'player';
+                player.classList.add('has-ball');
+                ball.classList.add('possessed');
+                ballVelX = 0;
+                ballVelY = 0;
+            }
+        }
+        
+        // Сброс мяча
+        function resetBall() {
+            ballX = 590;
+            ballY = 390;
+            ballVelX = 0;
+            ballVelY = 0;
+            ballOwner = null;
+            player.classList.remove('has-ball');
+            enemies.forEach(enemy => enemy.element.classList.remove('has-ball'));
+            ball.classList.remove('possessed');
+            updateBallPosition();
+        }
+        
+        // Эффекты
+        function createGoalEffect(x, y) {
+            let effect = document.createElement('div');
+            effect.className = 'goal-effect';
+            effect.style.left = (x - 50) + 'px';
+            effect.style.top = (y - 50) + 'px';
+            document.querySelector('.field').appendChild(effect);
+            setTimeout(() => effect.remove(), 1000);
+        }
+        
+        function createStealEffect(x, y) {
+            let effect = document.createElement('div');
+            effect.className = 'steal-effect';
+            effect.style.left = (x - 20) + 'px';
+            effect.style.top = (y - 20) + 'px';
+            document.querySelector('.field').appendChild(effect);
+            setTimeout(() => effect.remove(), 500);
+        }
+        
+        function createBallTrail() {
+            let trail = document.createElement('div');
+            trail.className = 'ball-trail';
+            trail.style.left = ballX + 'px';
+            trail.style.top = ballY + 'px';
+            document.querySelector('.field').appendChild(trail);
+            setTimeout(() => trail.remove(), 300);
+        }
+        
+        // Обновление дриблинга
+        function updateDribbling() {
+            if (isDribbling && Date.now() > dribbleEndTime) {
+                isDribbling = false;
+                player.classList.remove('dribbling');
+            }
+        }
+        
+        // Таймер
+        function startTimer() {
+            setInterval(() => {
+                if (gameRunning && timeLeft > 0) {
+                    timeLeft--;
+                    timeElement.textContent = timeLeft;
+                    if (timeLeft === 0) {
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            alert(`Игра окончена! Ваш счёт: ${score} голов`);
+        }
+        
+        // Основной игровой цикл
+        function gameLoop() {
+            if (gameRunning) {
+                movePlayer();
+                moveEnemies();
+                updateBall();
+                updateDribbling();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Запуск игры
+        init();
+    </script>
+</body>
+</html>
